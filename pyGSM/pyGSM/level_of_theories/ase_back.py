@@ -1,0 +1,177 @@
+"""
+Level Of Theory for ASE calculators
+https://gitlab.com/ase/ase
+
+Written by Tamas K. Stenczel in 2021
+"""
+import importlib
+
+try:
+    from ase import Atoms
+    from ase.calculators.calculator import Calculator
+    from ase.data import atomic_numbers
+    from ase import units
+    import numpy as np
+except ModuleNotFoundError:
+    Atoms = None
+    Calculator = None
+    atomic_numbers = None
+    units = None
+    print("ASE not installed, ASE-based calculators will not work")
+
+from .base_lot import Lot, LoTError
+
+
+class Constraint_custom_forces:
+    def __init__(self, a, direction):
+        self.a = a
+        self.dir = direction
+
+    def adjust_positions(self, atoms, newpositions):
+        pass
+
+    def adjust_forces(self, atoms, forces):
+        forces[self.a] = forces[self.a] + self.dir
+
+class Constraint_custom_lab:
+    def __init__(self, a1, a2, f_ext):
+        self.a1 = a1
+        self.a2 = a2
+        self.external_force = f_ext
+
+    def adjust_positions(self, atoms, new):
+        pass
+
+    def adjust_forces(self, atoms, forces):
+        centroid_frag1 = np.mean(atoms.positions[self.a1],axis=0)
+        dist = atoms.positions[self.a2] - centroid_frag1
+        force = self.external_force * dist / np.linalg.norm(dist)
+        forces[self.a2] -= force
+
+class ASELoT(Lot):
+    """
+    Warning:
+        multiplicity is not implemented, the calculator ignores it
+    """
+
+    def __init__(self, calculator: Calculator, constraints_forces, lab_forces, options):
+        super(ASELoT, self).__init__(options)
+
+        self.ase_calculator = calculator
+        self.constraints_forces = constraints_forces
+        self.lab_forces = lab_forces
+
+    @classmethod
+    def from_options(cls, calculator: Calculator, constraints_forces, lab_forces, **kwargs):
+        """ Returns an instance of this class with default options updated from values in kwargs"""
+        return cls(calculator, constraints_forces, lab_forces, cls.default_options().set_values(kwargs))
+
+    @classmethod
+    def copy(cls, lot, options, copy_wavefunction=True):
+        assert isinstance(lot, ASELoT)
+        return cls(lot.ase_calculator, lot.constraints_forces, lot.lab_forces, lot.options.copy().set_values(options))
+
+    @classmethod
+    def from_calculator_string(cls, calculator_import: str, calculator_kwargs: dict = dict(), **kwargs):
+        # this imports the calculator
+        module_name = ".".join(calculator_import.split(".")[:-1])
+        class_name = calculator_import.split(".")[-1]
+
+        # import the module of the calculator
+        try:
+            module = importlib.import_module(module_name)
+        except ModuleNotFoundError:
+            raise LoTError(
+                "ASE-calculator's module is not found: {}".format(class_name))
+
+        # class of the calculator
+        if hasattr(module, class_name):
+            calc_class = getattr(module, class_name)
+            assert issubclass(calc_class, Calculator)
+        else:
+            raise LoTError(
+                "ASE-calculator's class ({}) not found in module {}".format(class_name, module_name))
+
+        # make sure there is no calculator in the options
+        _ = kwargs.pop("calculator", None)
+
+        # construct from the constructor
+        return cls.from_options(calc_class(**calculator_kwargs), **kwargs)
+
+    def run(self, geom, mult, ad_idx, runtype='gradient'):
+        # run ASE
+        self.run_ase_atoms(xyz_to_ase(geom), mult, ad_idx, runtype)
+
+    def run_ase_atoms(self, atoms: Atoms, mult, ad_idx, runtype='gradient'):
+        # set the calculator
+        atoms.set_calculator(self.ase_calculator)
+        if self.constraints_forces[0][0] != None:
+            atom_indices = [x for x in range(len(atoms))]
+            constraint = Constraint_custom_forces(atom_indices, self.constraints_forces)
+            atoms.set_constraint(constraint)
+        
+        if self.lab_forces[0][0] != None:
+            frag1_indices = self.lab_forces[0]
+            frag2_indices = self.lab_forces[1]
+            f_ext = self.lab_forces[2]
+            constraint = Constraint_custom_lab(frag1_indices, frag2_indices, f_ext)
+            atoms.set_constraint(constraint)
+
+        # perform gradient calculation if needed
+        if runtype == "gradient":
+            self._Gradients[(mult, ad_idx)] = self.Gradient(- atoms.get_forces() / units.Ha * units.Bohr,
+                                                            'Hartree/Bohr')
+        elif runtype == "energy":
+            pass
+        else:
+            raise NotImplementedError(
+                f"Run type {runtype} is not implemented in the ASE calculator interface")
+
+        # energy is always calculated -> cached if force calculation was done
+        self._Energies[(mult, ad_idx)] = self.Energy(
+            atoms.get_potential_energy()[0] / units.Ha, 'Hartree')
+
+        # write E to scratch
+        self.write_E_to_file()
+
+        self.hasRanForCurrentCoords = True
+
+def xyz_to_ase(xyz):
+    """
+
+    Parameters
+    ----------
+    xyz : np.ndarray, shape=(N, 4)
+
+
+    Returns
+    -------
+    atoms : ase.Atoms
+        ASE's Atoms object
+
+    """
+
+    # compatible with list-of-list as well
+    numbers = [atomic_numbers[x[0]] for x in xyz]
+    pos = [x[1:4] for x in xyz]
+    return geom_to_ase(numbers, pos)
+
+
+def geom_to_ase(numbers, positions, **kwargs):
+    """Geometry to ASE atoms object
+
+    Parameters
+    ----------
+    numbers : array_like, shape=(N_atoms,)
+        atomic numbers
+    positions : array_like, shape=(N_atoms,3)
+        positions of atoms in Angstroms
+    kwargs
+
+    Returns
+    -------
+    atoms : ase.Atoms
+        ASE's Atoms object
+    """
+
+    return Atoms(numbers=numbers, positions=positions, **kwargs)
