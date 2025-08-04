@@ -1,0 +1,46 @@
+Metadata-Version: 2.2
+Name: pyGSM
+Version: 1.0.0+688.g295dc46.dirty
+Summary: Reaction path and photochemistry tool
+Author: Cody Aldaz
+Author-email: Cody Aldaz <codyaldaz@gmail.com>
+License: MIT
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: importlib-resources; python_version < "3.10"
+Requires-Dist: numpy>1.11
+Requires-Dist: six
+Requires-Dist: scipy
+Requires-Dist: matplotlib
+Requires-Dist: networkx
+Requires-Dist: pytest-cov
+Requires-Dist: xtb
+Requires-Dist: sphinx
+Requires-Dist: sphinx_rtd_theme
+Requires-Dist: typing-extensions
+Provides-Extra: test
+Requires-Dist: pytest>=6.1.2; extra == "test"
+Requires-Dist: pytest-runner; extra == "test"
+
+pyGSM
+==============================
+[//]: # (Badges)
+[![GitHub Actions Build Status](https://github.com/ZimmermanGroup/pyGSM/workflows/CI/badge.svg)](https://github.com/ZimmermanGroup/pyGSM/actions?query=workflow%3ACI)
+[![codecov](https://codecov.io/gh/ZimmermanGroup/pyGSM/branch/master/graph/badge.svg)](https://codecov.io/gh/ZimmermanGroup/pyGSM/branch/master)
+
+
+Reaction path and photochemistry tool
+
+
+## Documentation
+See https://zimmermangroup.github.io/pyGSM/
+
+
+## Install instructions
+pyGSM can be installed by setting up a python environment (e.g. venv, conda), cloning the GitHub repository, and installing with pip. From the root directory in the git repository, this would look like:
+```
+pip install -e .
+```

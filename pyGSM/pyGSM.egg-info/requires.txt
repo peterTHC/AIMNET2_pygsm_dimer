@@ -1,0 +1,17 @@
+numpy>1.11
+six
+scipy
+matplotlib
+networkx
+pytest-cov
+xtb
+sphinx
+sphinx_rtd_theme
+typing-extensions
+
+[:python_version < "3.10"]
+importlib-resources
+
+[test]
+pytest>=6.1.2
+pytest-runner
