@@ -12,6 +12,7 @@ The calculation workflow is to run a single-ended growing string method starting
 The reactant complex is then taken from the result and further used for double-ended growing string method.
 The final string output will be in molden format (opt_converged_000.xyz) and the output file is writen in gsm2.out
 
+
 In the no_force_ex folder
 
 conf.xyz: the product conformer xyz file
@@ -24,9 +25,11 @@ convert_conf.py: a python file used to convert single growing string method resu
 
 test.py: pyGSM running file
 
+
 In the force_ex/gsm folder
 
 constraints.txt: the file used to indicate the external force direction in the shape of (N, 3)
+
 
 In the force_ex/dimer folder
 
