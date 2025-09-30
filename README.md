@@ -2,7 +2,9 @@ This code is used for running pyGSM using a starting conformer (conf.xyz) and an
 To make the pyGSM compatible with AIMNet2, and external force, the pyGSM folder in this repository needs to be installed.
 
 To install this version of pyGSM you need to do
+
  cd pyGSM
+ 
  pip install .
 
 
